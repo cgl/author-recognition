@@ -1,26 +1,32 @@
-package Ngrams;
-
-import com.google.common.io.Resources;
+package huffman;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 /**
  * Created by cagil on 08/01/16.
+ *
+ * java Ngrams.HuffmanCode compress ../resources/huffman_test.txt ../resources/huffman.out tree.out
+ * java Ngrams.Huffman2Gram compress ../resources/huffman_test.txt ../resources/huffman2.out tree2.out
+ * java Ngrams/HuffmanCode expand ../resources/huffman.out tree.out
+ * java Ngrams/Huffman2Gram expand ../resources/huffman2.out tree2.out
+ *
  */
 public class HuffmanCode {
 
     // alphabet size of extended ASCII
-    private static final int N = 256;
+    public static int N = 1024;
 
     HuffmanTree root;
     String text;
+    int[] charFreqs;
     BitSet compressedText;
     String decodedText;
-    HashMap<Character,String> codebook;
-    private boolean debug = false;
+    public HashMap<String, String> codebook;
+    public boolean debug = false;
 
     public void setDebug(boolean debug) {
         this.debug = debug;
@@ -30,12 +36,12 @@ public class HuffmanCode {
     }
 
     public static class HuffmanTree implements Comparable<HuffmanTree>, Serializable {
-        char ch;
+        String ch;
         int freq;
         HuffmanTree left;
         HuffmanTree right;
 
-        public HuffmanTree(char ch, int freq, HuffmanTree left, HuffmanTree right) {
+        public HuffmanTree(String ch, int freq, HuffmanTree left, HuffmanTree right) {
             this.ch = ch;
             this.freq = freq;
             this.left = left;
@@ -183,30 +189,36 @@ public class HuffmanCode {
     // constructor for compressing from a file
     public HuffmanCode(Path filename) throws IOException {
         // read text from file
-        this.text = new String(Files.readAllBytes(filename));
-        codebook = new HashMap<Character,String>();
-    }
-    // constructor for decoding from a file
-    public HuffmanCode(String compressedFilename, String treeFilename) throws IOException, ClassNotFoundException {
-        // deserialize HuffmanTree from treeFilename
-        deserializeHuffmanTree(treeFilename);
-        //  read compressed input from  String compressedFilename
-        String path = Resources.getResource(compressedFilename).getPath();
-        this.compressedText = (BitSet) new ObjectInputStream(new FileInputStream(path)).readObject();
+        this(new String(Files.readAllBytes(Paths.get(filename.toString()).toAbsolutePath())));
+
     }
 
     // constructor for compressing given text
     public HuffmanCode(String text) {
         this.text = text;
-        codebook = new HashMap<Character,String>();
+        codebook = new HashMap<>();
     }
 
-    /* HuffmanCode compress input.txt output tree ---> Compresses file input.txt to a file output and serialize Tree into file tree
-     * HuffmanCode expand output tree             ---> Expands binary file output to StdOut
+    // constructor for decoding from a file
+    public HuffmanCode(String compressedFilename, String treeFilename) throws IOException, ClassNotFoundException {
+        // deserialize HuffmanTree from treeFilename
+        deserializeHuffmanTree(treeFilename);
+        //  read compressed input from  String compressedFilename
+        //String path = Resources.getResource(compressedFilename).getPath();
+        String path = Paths.get(compressedFilename).toAbsolutePath().toString();
+        this.compressedText = (BitSet) new ObjectInputStream(new FileInputStream(path)).readObject();
+    }
+
+    /* HuffmanCode compress input.txt output.bin tree.bin ---> Compresses file input.txt to a file output and serialize Tree into file tree
+     * HuffmanCode expand output.bin tree.bin             ---> Expands binary file output to StdOut
      *
      */
     public static void main(String[] args) throws IOException, ClassNotFoundException {
-        if (args[0].equals("expand")) {  //Expands binary file output to StdOut
+        if (args.length == 0) {
+            System.out.println("java HuffmanCode compress input.txt huffman.out tree.out");
+            System.out.println("java HuffmanCode expand huffman.out tree.out");
+        }
+        else if (args[0].equals("expand")) {  //Expands binary file output to StdOut
             String compressedInFilename = args[1];
             String treeInFilename = args[2];
             HuffmanCode huff = new HuffmanCode(compressedInFilename, treeInFilename);
@@ -223,13 +235,14 @@ public class HuffmanCode {
     }
 
     void compress(String compressedFilename, String treeOutFilename) throws IOException {
-        myPrint("Compressing "+text);
+        if(debug)
+            myPrint("Compressing "+text);
         // check if HuffmanTree is built?
         if(root == null) { // can we use previously built tree for different text?
             // find frequencies of chars
-            int[] freqs = calculateFrequencies();
+            calculateFrequencies();
             // build HuffmanTree
-            buildHuffmanTree(freqs);
+            buildHuffmanTree();
             // built HashMap<Character,String> or String[]
             buildCodebook("",root);
             if(debug)
@@ -238,8 +251,9 @@ public class HuffmanCode {
         // encode input    (String compressedFilename)
         encode();
         // write encoded input to file
-        String path = Resources.getResource(compressedFilename).getPath();
-        ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(path));
+        //String path = Resources.getResource(compressedFilename).getPath();
+        String path = Paths.get(compressedFilename).toAbsolutePath().toString();
+        ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(path)); //To do
         outputStream.writeObject(compressedText);
 
         // serialize HuffmanTree     (String treeOutFilename)
@@ -248,23 +262,9 @@ public class HuffmanCode {
         // extra check if encoded file is smaller than the original
 
     }
-    // Build the codebook that includes char: codeword mappings
-    // HashMap<Character,String> or String[]
-    public void buildCodebook(String codeword,HuffmanTree tree) {
-       if (! tree.isLeaf()){
-           buildCodebook(codeword+'0',tree.left);
-           buildCodebook(codeword+'1',tree.right);
-       }
-        else {
-           codebook.put(tree.ch,codeword);
-       }
-    }
 
     public void encode() {
-        final StringBuffer stringBuilder = new StringBuffer();
-        for (int i = 0; i < text.length(); i++) {
-            stringBuilder.append(codebook.get(text.charAt(i)));
-        }
+        final StringBuffer stringBuilder = getStringToCompress();
         stringBuilder.append("1"); // for bitSet boundry
         compressedText = new BitSet(stringBuilder.length());
         for (int i = 0; i < stringBuilder.length(); i++) {
@@ -285,14 +285,33 @@ public class HuffmanCode {
         }
     }
 
+    public StringBuffer getStringToCompress() {
+        final StringBuffer stringBuilder = new StringBuffer();
+        for (int i = 0; i < text.length(); i++) {
+            stringBuilder.append(codebook.get(String.valueOf(text.charAt(i))));
+        }
+        return stringBuilder;
+    }
 
-    public void buildHuffmanTree(int[] freqs) {//Collections.reverseOrder()
+    // Build the codebook that includes char: codeword mappings
+    // HashMap<Character,String> or String[]
+    public void buildCodebook(String codeword,HuffmanTree tree) {
+        if (! tree.isLeaf()){
+            buildCodebook(codeword+'0',tree.left);
+            buildCodebook(codeword+'1',tree.right);
+        }
+        else {
+            codebook.put(tree.ch,codeword);
+        }
+    }
+
+    public void buildHuffmanTree() {//Collections.reverseOrder()
         PriorityQueue<HuffmanTree> priQueue = new PriorityQueue<HuffmanTree>();
         int n = 0; // number of codewords
-        for (int i = 0; i < freqs.length; i++) {
-            if (freqs[i] > 0) {
+        for (int i = 0; i < N; i++) {
+            if (getFreq(i) > 0) {
                 n++;
-                HuffmanTree node = new HuffmanTree((char) i, freqs[i], null, null);
+                HuffmanTree node = new HuffmanTree(getAtom(i), getFreq(i), null, null);
                 priQueue.add(node);
                 //myPrint(i+":"+String.valueOf((char) i));
             }
@@ -301,27 +320,35 @@ public class HuffmanCode {
         for (int i = 1; i < n; i++) {
             x = priQueue.poll();
             y = priQueue.poll();
-            z = new HuffmanTree('\0',x.freq+y.freq,x,y);
+            z = new HuffmanTree(String.valueOf('\0'),x.freq+y.freq,x,y);
             priQueue.add(z);
         }
-        z.print(z);
+        if(debug)
+            z.print(z);
         root = z;
     }
 
+    public String getAtom(int i) {
+        return String.valueOf((char) i);
+    }
+
+    public int getFreq(int i) {
+        return charFreqs[i];
+    }
+
     // find frequencies of chars in input string
-    public int[] calculateFrequencies() {
-        int [] freqs = new int[N];
+    public void calculateFrequencies() {
+        charFreqs = new int[N];
         for (int i = 0; i < text.length(); i++) {
-            freqs[text.charAt(i)]+=1;
+            charFreqs[text.charAt(i)]+=1;
         }
-        return freqs;
     }
 
     /************************************************************
     *
     *  Decodes the given binary file with the given Huffman Tree
      ***********************************************************/
-    private void expand(){
+    public void expand(){
         // check if HuffmanTree is null?  give error
         if(root==null)
             myPrint("Please make sure the tree is present");
@@ -330,7 +357,8 @@ public class HuffmanCode {
         // decode input
         decode();
         // write decoded input to StdOut
-        myPrint(decodedText);
+        if(debug)
+            myPrint(decodedText);
     }
 
     public void decode() {
@@ -347,7 +375,6 @@ public class HuffmanCode {
                 tree = root;
             }
         }
-        myPrint(decodedText);
     }
 
     private void innerDecode(HuffmanTree tree, String decodedText) {
@@ -390,4 +417,11 @@ public class HuffmanCode {
         System.out.println(i);
     }
 
+    public String getText() {
+        return text;
+    }
+
+    public HashMap<String, String> getCodebook() {
+        return codebook;
+    }
 }
