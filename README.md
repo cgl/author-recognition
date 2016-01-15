@@ -33,9 +33,13 @@ A naive bayes classifier which uses Function words feature.
 
 Confusion matrix:
 yigitBulut	[2, 1, 0, 0, 1]
+
 canDundar	[0, 2, 1, 0, 1]
+
 gulseBirsel	[0, 0, 4, 0, 0]
+
 yilmazOzdil	[0, 0, 1, 2, 1]
+
 nihalKaraca	[0, 0, 1, 0, 3]
 
 Author: yigitBulut guess: yigitBulut
