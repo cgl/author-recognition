@@ -1,4 +1,4 @@
-package nb;
+package authorRecognition;
 
 import zemberek.tokenizer.SentenceBoundaryDetector;
 import zemberek.tokenizer.SimpleSentenceBoundaryDetector;

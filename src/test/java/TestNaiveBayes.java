@@ -1,6 +1,6 @@
-import nb.Dataset;
-import nb.NaiveBayesClassifier;
-import nb.NbClassifier;
+import authorRecognition.Dataset;
+import authorRecognition.NaiveBayesClassifier;
+import authorRecognition.NbClassifier;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,9 +24,7 @@ public class TestNaiveBayes {
     }
 
     public static void main(String[] args) throws IOException {
-        String testfile = "/Users/cagil/Documents/boun/yeterlilik/author_recognition/69yazar/test_texts";
-        String datafile = "/Users/cagil/Documents/boun/yeterlilik/author_recognition/69yazar/raw_texts";
-        datafile = "/Users/cagil/Documents/boun/yeterlilik/author_recognition/Dataset_from_69_yazar";
+        String datafile = "src/main/resources/Dataset_from_69_yazar";
         HashMap<String, ArrayList<String>> dataset = Dataset.prepareDataset(datafile);
         NaiveBayesClassifier naive = new NaiveBayesClassifier();
         naive.learn(dataset);

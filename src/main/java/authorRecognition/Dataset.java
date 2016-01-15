@@ -1,4 +1,4 @@
-package nb;
+package authorRecognition;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -16,7 +16,8 @@ public class Dataset {
 
     public static HashMap<String, ArrayList<String>> prepareDataset(String filename) {
         dataset_training = new HashMap<String, ArrayList<String>>();
-        final File folder = new File(filename);
+        String absFilename = Paths.get(filename).toAbsolutePath().toString();
+        final File folder = new File(absFilename);
         int a = 0;
         for (final File folderEntry : folder.listFiles()) {
             if (folderEntry.isDirectory()) {

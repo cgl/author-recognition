@@ -1,4 +1,4 @@
-package nb;
+package authorRecognition;
 
 import com.google.common.io.Resources;
 import zemberek.core.io.SimpleTextReader;
