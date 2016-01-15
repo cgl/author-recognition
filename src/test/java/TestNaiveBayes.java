@@ -39,7 +39,7 @@ public class TestNaiveBayes {
         for (String author : Dataset.getDataset_test().keySet()) {
             for (String text : Dataset.getDataset_test().get(author)) {
                 String guess = naive.classify(text);
-                System.out.format("Athor: %s guess: %s\n", author, guess);
+                System.out.format("Author: %s guess: %s\n", author, guess);
                 if (author.equals(guess))
                     correct++;
                 confusionMatrix[naive.cats_indexes.get(author)][naive.cats_indexes.get(guess)] += 1;
